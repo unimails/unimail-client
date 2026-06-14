@@ -2,6 +2,8 @@
 
 A command-line tool for sending email through [unimail-go-sdk](https://github.com/unimails/unimail-go-sdk).
 
+[Chinese Docs](README_zh.md)
+
 ## Contents
 
 - [UNIMAIL-CLIENT](#unimail-client)
