@@ -1,7 +1,194 @@
-# name: build
+name: build
 
-# on:
-#   push:
-#     - tag
+on:
+  push:
+    tags:
+      - "*"
 
-# jobs:
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }} / ${{ matrix.goarch }}${{ matrix.goarm && format('/{0}', matrix.goarm) || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: 386
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: arm
+            goarm: 5
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: arm
+            goarm: 6
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: arm
+            goarm: 7
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: mips
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: mipsle
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: mips64
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: mips64le
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: ppc64
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: ppc64le
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: riscv64
+            archive_ext: tar.gz
+          - goos: linux
+            goarch: s390x
+            archive_ext: tar.gz
+          - goos: freebsd
+            goarch: 386
+            archive_ext: tar.gz
+          - goos: freebsd
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: freebsd
+            goarch: arm
+            goarm: 7
+            archive_ext: tar.gz
+          - goos: freebsd
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: openbsd
+            goarch: 386
+            archive_ext: tar.gz
+          - goos: openbsd
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: openbsd
+            goarch: arm
+            goarm: 7
+            archive_ext: tar.gz
+          - goos: openbsd
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: netbsd
+            goarch: 386
+            archive_ext: tar.gz
+          - goos: netbsd
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: netbsd
+            goarch: arm
+            goarm: 7
+            archive_ext: tar.gz
+          - goos: netbsd
+            goarch: arm64
+            archive_ext: tar.gz
+          - goos: windows
+            goarch: 386
+            archive_ext: zip
+          - goos: windows
+            goarch: amd64
+            archive_ext: zip
+          - goos: windows
+            goarch: arm64
+            archive_ext: zip
+          - goos: darwin
+            goarch: amd64
+            archive_ext: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive_ext: tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: 0
+        run: |
+          set -euo pipefail
+
+          version_tag="${GITHUB_REF_NAME}"
+          version_tag="${version_tag#v}"
+
+          binary_name="unimail-client"
+          if [ "$GOOS" = "windows" ]; then
+            binary_name="${binary_name}.exe"
+          fi
+
+          if [ -n "${GOARM:-}" ]; then
+            output_dir="dist/${GOOS}-${GOARCH}v${GOARM}"
+            asset_suffix="${GOOS}_${GOARCH}v${GOARM}"
+          else
+            output_dir="dist/${GOOS}-${GOARCH}"
+            asset_suffix="${GOOS}_${GOARCH}"
+          fi
+
+          mkdir -p "$output_dir"
+
+          go build -trimpath -ldflags "-s -w -X main.VERSION=${version_tag}" -o "$output_dir/${binary_name}" .
+
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            archive_path="dist/unimail-client_${asset_suffix}.zip"
+            (cd "$output_dir" && zip -q "../../${archive_path}" "$binary_name")
+          else
+            archive_path="dist/unimail-client_${asset_suffix}.tar.gz"
+            tar -czf "$archive_path" -C "$output_dir" "$binary_name"
+          fi
+
+          (cd dist && sha256sum "$(basename "$archive_path")" > "$(basename "$archive_path").sha256")
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unimail-client-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm && format('v{0}', matrix.goarm) || '' }}
+          path: |
+            dist/unimail-client_*
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-assets/*

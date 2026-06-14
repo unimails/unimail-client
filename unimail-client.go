@@ -14,7 +14,8 @@ import (
 	unimail "github.com/unimails/unimail-go-sdk"
 )
 
-const VERSION = "0.0.1"
+var VERSION = "0.0.1"
+
 const defaultRepo = "unimails/unimail-client"
 
 type cliOptions struct {
@@ -180,16 +181,12 @@ func buildRequest(opts cliOptions) (unimail.UnimailReq, error) {
 	}
 
 	for _, item := range opts.files {
-		parts := splitAndTrim(item, ";")
-		if len(parts)%2 != 0 {
-			return req, fmt.Errorf("--file expects even number of ';' separated values, got: %q", item)
+		name, path, err := parseFileSpec(item)
+		if err != nil {
+			return req, err
 		}
-		for i := 0; i < len(parts); i += 2 {
-			name := parts[i]
-			path := parts[i+1]
-			if err := req.AppendFile(name, path); err != nil {
-				return req, fmt.Errorf("append file failed (name=%s path=%s): %w", name, path, err)
-			}
+		if err := req.AppendFile(name, path); err != nil {
+			return req, fmt.Errorf("append file failed (name=%s path=%s): %w", name, path, err)
 		}
 	}
 
@@ -213,9 +210,10 @@ Options:
   -s, --subject     set UnimailReq.Subject
   -t, --txt         set UnimailReq.TxtContent
   --html, -H        set UnimailReq.HtmlContent
-  --file            attachment pairs separated by ';'
-                    e.g. --file "report.pdf;./report.pdf"
-                    e.g. --file "a.txt;./a.txt;b.txt;./b.txt"
+	--file            attachment pair in the form name;path
+										repeat --file for multiple attachments
+										e.g. --file "report.pdf;./report.pdf"
+										e.g. --file "a.txt;./a.txt" --file "b.txt;./b.txt"
   -h, --help        show help
 
 Commands:
@@ -298,6 +296,21 @@ func splitAndTrim(s string, sep string) []string {
 		out = append(out, trimmed)
 	}
 	return out
+}
+
+func parseFileSpec(item string) (string, string, error) {
+	parts := strings.SplitN(item, ";", 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("--file expects exactly one name;path pair, got: %q", item)
+	}
+
+	name := strings.TrimSpace(parts[0])
+	path := strings.TrimSpace(parts[1])
+	if name == "" || path == "" {
+		return "", "", fmt.Errorf("--file expects non-empty name and path, got: %q", item)
+	}
+
+	return name, path, nil
 }
 
 func compareSemver(a string, b string) int {
