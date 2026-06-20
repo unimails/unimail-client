@@ -4,17 +4,32 @@
 
 [EnglishDocs](README.md)
 
-## 目录
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
-- [特性](#特性)
-- [安装](#安装)
-- [配置](#配置)
-- [用法](#用法)
-- [参数说明](#参数说明)
-- [命令说明](#命令说明)
-- [示例](#示例)
-- [发布与更新](#发布与更新)
-- [License](#license)
+<!-- code_chunk_output -->
+
+- [UNIMAIL-CLIENT](#unimail-client)
+  - [特性](#特性)
+  - [安装](#安装)
+    - [方式一：从 Release 下载](#方式一从-release-下载)
+    - [方式二：本地构建](#方式二本地构建)
+    - [方式三: PPA 安装](#方式三-ppa-安装)
+  - [配置](#配置)
+  - [用法](#用法)
+    - [查看帮助](#查看帮助)
+    - [发送邮件](#发送邮件)
+    - [附件](#附件)
+  - [参数说明](#参数说明)
+  - [命令说明](#命令说明)
+    - [version](#version)
+    - [update / upgrade](#update--upgrade)
+  - [示例](#示例)
+    - [发送纯文本邮件](#发送纯文本邮件)
+    - [发送 HTML 邮件](#发送-html-邮件)
+    - [发送带附件的邮件](#发送带附件的邮件)
+  - [License](#license)
+
+<!-- /code_chunk_output -->
 
 ## 特性
 
@@ -37,6 +52,18 @@
 ```bash
 go build -o unimail-client .
 ```
+
+### 方式三: PPA 安装
+
+当项目成功上传到 Launchpad PPA 后，Ubuntu 用户可以通过以下方式安装：
+
+```bash
+sudo add-apt-repository ppa:allcloud/unimail-client
+sudo apt update
+sudo apt install unimail-client
+```
+
+请将 `allcloud` 与 `unimail-client` 替换为你的实际值。
 
 ## 配置
 

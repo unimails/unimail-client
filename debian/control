@@ -1,0 +1,15 @@
+Source: unimail-client
+Section: mail
+Priority: optional
+Maintainer: allcloud.top <admin@allcloud.top>
+Build-Depends: debhelper-compat (= 13), golang-any
+Standards-Version: 4.6.2
+Homepage: https://github.com/unimails/unimail-client
+Rules-Requires-Root: no
+
+Package: unimail-client
+Architecture: any
+Depends: ${misc:Depends}
+Description: Command-line client for sending email via UNIMAIL API
+ A lightweight CLI to send plain text or HTML email through the UNIMAIL API.
+ Supports multiple receivers, CC/BCC, and attachments.

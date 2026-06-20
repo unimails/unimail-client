@@ -1,0 +1,131 @@
+name: publish-ppa
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ubuntu_series:
+        description: "Ubuntu series (e.g. noble, jammy)"
+        required: false
+        default: "noble"
+
+permissions:
+  contents: write # 修复问题 2：修改为 write，允许 CI 将更新后的 changelog 自动推回仓库
+
+jobs:
+  publish:
+    name: Build and Upload PPA Source Package
+    runs-on: ubuntu-latest
+    env:
+      UBUNTU_SERIES: ${{ github.event.inputs.ubuntu_series || 'noble' }}
+      LAUNCHPAD_USER: ${{ secrets.LAUNCHPAD_USER }}
+      PPA_NAME: ${{ secrets.PPA_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${{ secrets.PPA_GPG_PRIVATE_KEY }}" ] || { echo "Missing secret: PPA_GPG_PRIVATE_KEY"; exit 1; }
+          [ -n "${{ secrets.PPA_GPG_FINGERPRINT }}" ] || { echo "Missing secret: PPA_GPG_FINGERPRINT"; exit 1; }
+          [ -n "${{ secrets.PPA_GPG_PASSPHRASE }}" ] || { echo "Missing secret: PPA_GPG_PASSPHRASE"; exit 1; }
+          [ -n "${LAUNCHPAD_USER}" ] || { echo "Missing secret: LAUNCHPAD_USER"; exit 1; }
+          [ -n "${PPA_NAME}" ] || { echo "Missing secret: PPA_NAME"; exit 1; }
+
+      - name: Install packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts debhelper dh-make dput-ng gnupg
+
+      - name: Import signing key
+        shell: bash
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.PPA_GPG_PASSPHRASE }}
+          GPG_FINGERPRINT: ${{ secrets.PPA_GPG_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$(mktemp -d)"
+          chmod 700 "${GNUPGHOME}"
+          printf '%s' "${GPG_PRIVATE_KEY}" | base64 --decode | gpg --batch --import
+          KEYGRIP="$(gpg --with-keygrip --list-secret-keys "${GPG_FINGERPRINT}" | awk '/Keygrip/ {print $3; exit}')"
+          if [ -z "${KEYGRIP}" ]; then
+            echo "Failed to detect GPG keygrip"
+            exit 1
+          fi
+          cat > "${GNUPGHOME}/gpg.conf" <<'EOF'
+          pinentry-mode loopback
+          batch
+          no-tty
+          EOF
+          cat > "${GNUPGHOME}/gpg-agent.conf" <<'EOF'
+          allow-loopback-pinentry
+          EOF
+          echo "default-key ${GPG_FINGERPRINT}" >> "${GNUPGHOME}/gpg.conf"
+          gpgconf --kill gpg-agent
+          # Prime passphrase cache for later signing steps in non-interactive CI.
+          printf "copilot-ppa-signing" | gpg --batch --yes --pinentry-mode loopback --passphrase "${GPG_PASSPHRASE}" --local-user "${GPG_FINGERPRINT}" --clearsign >/dev/null
+          {
+            echo "GPG_TTY=$(tty || true)"
+            echo "GNUPGHOME=${GNUPGHOME}"
+            echo "DEB_SIGN_KEYID=${GPG_FINGERPRINT}"
+            echo "PPA_GPG_PASSPHRASE=${GPG_PASSPHRASE}" # 修复隐患 3：将密码抛给环境变量，以便打包工具在沙箱中读取
+          } >> "${GITHUB_ENV}"
+
+      # 解决问题 1：在打包前切为 native 格式，并由 CI 自动生成完备的离线依赖目录
+      - name: Prepare Go Vendor Offline Cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          go mod tidy
+          go mod vendor
+
+      - name: Build source package
+        shell: bash
+        env:
+          DEBFULLNAME: allcloud.top
+          DEBEMAIL: admin@allcloud.top
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build-ppa-source.sh scripts/upload-ppa.sh debian/rules
+          version_tag="${GITHUB_REF_NAME#v}"
+
+          # 针对本地脚本调用 dpkg-buildpackage 时，强行注入环境变量密码
+          export DEB_SIGN_KEYID="${{ secrets.PPA_GPG_FINGERPRINT }}"
+
+          ./scripts/build-ppa-source.sh "${UBUNTU_SERIES}" "${version_tag}"
+
+      # 解决问题 2：自动将打包脚本修改后的最新 changelog 文件提交并推回 GitHub 仓库中留痕
+      - name: Commit and Push Updated Changelog
+        if: startsWith(github.ref, 'refs/tags/v') # 仅在正式打 tag 触发时才同步回代码库
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@://github.com"
+
+          # 检查 changelog 是否真的发生了变动
+          if ! git diff --exit-code debian/changelog; then
+            git add debian/changelog
+            git commit -m "chore: auto-update changelog for release ${GITHUB_REF_NAME}"
+            
+            # 强制推送更新到当前 tag 所属的分支（通常是 main）
+            git push origin HEAD:master
+          fi
+
+      - name: Upload to Launchpad PPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/upload-ppa.sh "${LAUNCHPAD_USER}" "${PPA_NAME}"

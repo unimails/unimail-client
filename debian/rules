@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# 1. 将 Go 的缓存和工作目录强行指定在项目当前编译目录下（解决权限问题）
+export GOCACHE = $(CURDIR)/.gocache
+export GOPATH = $(CURDIR)/.gopath
+
+# 2. 关键：强行禁止 Go 自动联网下载更新版本的工具链（解决断网报错问题）
+export GOTOOLCHAIN = local
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf unimail-client .gocache .gopath
+
+override_dh_auto_build:
+	# 关键：添加 -mod=vendor 启用本地离线依赖编译
+	CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags "-s -w -X main.VERSION=$$(dpkg-parsechangelog -SVersion | sed 's/-.*//')" -o unimail-client .
+
+override_dh_auto_install:
+	install -D -m0755 unimail-client debian/unimail-client/usr/bin/unimail-client

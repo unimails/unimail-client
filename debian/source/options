@@ -1,0 +1,5 @@
+extend-diff-ignore = "^(\.github/|scripts/|README.*|LICENSE)"
+tar-ignore = ".github"
+tar-ignore = "scripts"
+tar-ignore = "README*"
+tar-ignore = "LICENSE"

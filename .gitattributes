@@ -1,0 +1,6 @@
+# Keep Debian packaging metadata and shell scripts in Unix format.
+# dpkg-source fails if debian/source/format contains CRLF.
+debian/source/format text eol=lf
+debian/rules text eol=lf
+debian/changelog text eol=lf
+scripts/*.sh text eol=lf

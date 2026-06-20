@@ -4,14 +4,16 @@ A command-line tool for sending email through [unimail-go-sdk](https://github.co
 
 [Chinese Docs](README_zh.md)
 
-## Contents
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
 
 - [UNIMAIL-CLIENT](#unimail-client)
-  - [Contents](#contents)
   - [Features](#features)
   - [Installation](#installation)
     - [Option 1: Download from Release](#option-1-download-from-release)
     - [Option 2: Build locally](#option-2-build-locally)
+    - [Option 3: Install from Ubuntu APT (PPA)](#option-3-install-from-ubuntu-apt-ppa)
   - [Configuration](#configuration)
   - [Usage](#usage)
     - [Show help](#show-help)
@@ -26,6 +28,9 @@ A command-line tool for sending email through [unimail-go-sdk](https://github.co
     - [Send HTML email](#send-html-email)
     - [Send email with attachments](#send-email-with-attachments)
   - [License](#license)
+
+<!-- /code_chunk_output -->
+
 
 ## Features
 
@@ -48,6 +53,18 @@ When the project publishes a Release, you can download the archive for your plat
 ```bash
 go build -o unimail-client .
 ```
+
+### Option 3: Install from Ubuntu APT (PPA)
+
+After this project is uploaded to your Launchpad PPA:
+
+```bash
+sudo add-apt-repository ppa:<launchpad_user>/<ppa_name>
+sudo apt update
+sudo apt install unimail-client
+```
+
+Replace `<launchpad_user>` and `<ppa_name>` with your actual PPA owner/name.
 
 ## Configuration
 

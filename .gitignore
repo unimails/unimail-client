@@ -6,3 +6,5 @@
 *.bak
 *.ext
 *.exe
+vendor/
+debian/files
