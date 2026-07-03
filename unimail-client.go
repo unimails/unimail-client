@@ -8,13 +8,16 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
 	unimail "github.com/unimails/unimail-go-sdk"
 )
 
-var VERSION = "0.0.1"
+var VERSION = "0.0.2"
+var INSTALL_METHOD = "direct"
 
 const defaultRepo = "unimails/unimail-client"
 
@@ -219,6 +222,7 @@ Options:
 Commands:
   version           print current version
   update/upgrade    check latest release of %s and install latest if outdated
+                    disabled for package-manager installations such as apt/winget
 
 Examples:
   unimail-client -k xxx -f "Sender" -r a@x.com -r b@x.com -s "Hello" -t "Plain"
@@ -228,10 +232,14 @@ Examples:
 }
 
 func printVersion() {
-	fmt.Printf("unimail-client version %s\n", VERSION)
+	fmt.Printf("unimail-client version %s (install: %s)\n", VERSION, currentInstallMethod())
 }
 
 func updateToLatest(repo string) error {
+	if method := autoUpdateBlockedInstallMethod(); method != "" {
+		return fmt.Errorf("auto update is disabled for %s installations; please update with your system package manager", method)
+	}
+
 	latest, err := fetchLatestReleaseTag(repo)
 	if err != nil {
 		return err
@@ -253,6 +261,61 @@ func updateToLatest(repo string) error {
 
 	fmt.Println("update completed")
 	return nil
+}
+
+func normalizedInstallMethod() string {
+	method := strings.ToLower(strings.TrimSpace(INSTALL_METHOD))
+	if method == "" {
+		return "direct"
+	}
+	return method
+}
+
+func currentInstallMethod() string {
+	method := normalizedInstallMethod()
+	if method != "direct" {
+		return method
+	}
+	if detected := detectedPackageManagerInstall(); detected != "" {
+		return detected
+	}
+	return method
+}
+
+func canAutoUpdate() bool {
+	return autoUpdateBlockedInstallMethod() == ""
+}
+
+func autoUpdateBlockedInstallMethod() string {
+	method := currentInstallMethod()
+	if isPackageManagedInstall(method) {
+		return method
+	}
+	return ""
+}
+
+func isPackageManagedInstall(method string) bool {
+	switch method {
+	case "apt", "deb", "debian", "winget", "package", "package-manager", "package_manager":
+		return true
+	default:
+		return false
+	}
+}
+
+func detectedPackageManagerInstall() string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	exePath := strings.ToLower(filepath.ToSlash(filepath.Clean(exe)))
+	if strings.Contains(exePath, "/microsoft/winget/") {
+		return "winget"
+	}
+	return ""
 }
 
 func fetchLatestReleaseTag(repo string) (string, error) {

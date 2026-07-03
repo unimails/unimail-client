@@ -18,7 +18,7 @@ override_dh_auto_clean:
 
 override_dh_auto_build:
 	# 关键：添加 -mod=vendor 启用本地离线依赖编译
-	CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags "-s -w -X main.VERSION=$$(dpkg-parsechangelog -SVersion | sed 's/-.*//')" -o unimail-client .
+	CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags "-s -w -X main.VERSION=$$(dpkg-parsechangelog -SVersion | sed 's/-.*//') -X main.INSTALL_METHOD=apt" -o unimail-client .
 
 override_dh_auto_install:
 	install -D -m0755 unimail-client debian/unimail-client/usr/bin/unimail-client

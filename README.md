@@ -13,7 +13,8 @@ A command-line tool for sending email through [unimail-go-sdk](https://github.co
   - [Installation](#installation)
     - [Option 1: Download from Release](#option-1-download-from-release)
     - [Option 2: Build locally](#option-2-build-locally)
-    - [Option 3: Install from Ubuntu APT (PPA)](#option-3-install-from-ubuntu-apt-ppa)
+    - [Option 3: Install on Ubuntu](#option-3-install-on-ubuntu)
+    - [Option 4: Install on Windows](#option-4-install-on-windows)
   - [Configuration](#configuration)
   - [Usage](#usage)
     - [Show help](#show-help)
@@ -30,7 +31,6 @@ A command-line tool for sending email through [unimail-go-sdk](https://github.co
   - [License](#license)
 
 <!-- /code_chunk_output -->
-
 
 ## Features
 
@@ -54,7 +54,7 @@ When the project publishes a Release, you can download the archive for your plat
 go build -o unimail-client .
 ```
 
-### Option 3: Install from Ubuntu APT (PPA)
+### Option 3: Install on Ubuntu
 
 After this project is uploaded to your Launchpad PPA:
 
@@ -65,6 +65,14 @@ sudo apt install unimail-client
 ```
 
 Replace `<launchpad_user>` and `<ppa_name>` with your actual PPA owner/name.
+
+### Option 4: Install on Windows
+
+Install from Winget:
+
+```powershell
+winget install ACCloud.UnimailClient
+```
 
 ## Configuration
 
@@ -166,6 +174,8 @@ Check the latest Release of `unimails/unimail-client`. If the current version is
 unimail-client update
 unimail-client upgrade
 ```
+
+Auto update is only available for direct Release downloads or locally built binaries. Package-manager installations, such as APT/PPA or Winget builds, disable this command and should be upgraded through the same package manager.
 
 ## Examples
 

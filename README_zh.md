@@ -13,7 +13,8 @@
   - [安装](#安装)
     - [方式一：从 Release 下载](#方式一从-release-下载)
     - [方式二：本地构建](#方式二本地构建)
-    - [方式三: PPA 安装](#方式三-ppa-安装)
+    - [方式三：Ubuntu 安装](#方式三ubuntu-安装)
+    - [方式四：Windows 安装](#方式四windows-安装)
   - [配置](#配置)
   - [用法](#用法)
     - [查看帮助](#查看帮助)
@@ -53,7 +54,7 @@
 go build -o unimail-client .
 ```
 
-### 方式三: PPA 安装
+### 方式三：Ubuntu 安装
 
 当项目成功上传到 Launchpad PPA 后，Ubuntu 用户可以通过以下方式安装：
 
@@ -64,6 +65,14 @@ sudo apt install unimail-client
 ```
 
 请将 `allcloud` 与 `unimail-client` 替换为你的实际值。
+
+### 方式四：Windows 安装
+
+通过 Winget 安装：
+
+```powershell
+winget install ACCloud.UnimailClient
+```
 
 ## 配置
 
@@ -165,6 +174,8 @@ unimail-client version
 unimail-client update
 unimail-client upgrade
 ```
+
+自动更新仅适用于直接从 Release 下载或本地构建的二进制文件。通过 APT/PPA、Winget 等包管理器安装的版本会禁用该命令，请使用对应的包管理器进行升级。
 
 ## 示例
 
