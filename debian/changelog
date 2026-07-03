@@ -1,3 +1,9 @@
+unimail-client (0.0.2ppa~noble) noble; urgency=medium
+
+  * Automated PPA source build for noble.
+
+ -- allcloud.top <admin@allcloud.top>  Fri, 03 Jul 2026 15:15:04 +0000
+
 unimail-client (0.0.1-1-0ppa5~noble) noble; urgency=medium
 
   * Automated PPA source build for noble.
