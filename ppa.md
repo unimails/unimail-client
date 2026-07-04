@@ -58,6 +58,13 @@ for series in jammy noble resolute; do
 done
 ```
 
+如果 Launchpad 已经收到过同一个 source version，重新上传会报 `Upload permissions error`，因为同名 `.dsc`、`.tar.xz`、`.changes` 不能覆盖。此时需要提高 PPA revision，例如把 `0.0.2ppa~resolute` 改成 `0.0.2ppa1~resolute`：
+
+```bash
+./scripts/build-ppa-source.sh resolute 0.0.2 1
+./scripts/upload-ppa.sh <launchpad_user> <ppa_name> ../unimail-client_0.0.2ppa1~resolute_source.changes
+```
+
 如果只是本地测试构建，不需要签名和上传，可以使用：
 
 ```bash
@@ -104,6 +111,13 @@ tag 工作流会从标签名解析版本号，并默认发布到 `jammy`、`nobl
 
 - `upstream_version`: `0.0.2`
 - `ubuntu_series`: `jammy,resolute`
+- `ppa_revision`: 留空
+
+如果某个 series 已经部分上传过，重试时报 `Upload permissions error`，只重试失败的 series，并填写新的 `ppa_revision`：
+
+- `upstream_version`: `0.0.2`
+- `ubuntu_series`: `resolute`
+- `ppa_revision`: `1`
 
 也可以用空格分隔：
 

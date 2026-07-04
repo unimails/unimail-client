@@ -14,6 +14,10 @@ on:
         description: "Upstream version to publish manually (e.g. 0.0.2). Tags use the tag name automatically."
         required: false
         default: ""
+      ppa_revision:
+        description: "Optional PPA retry revision (e.g. 1 builds 0.0.2ppa1~jammy). Leave empty for normal releases."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -106,8 +110,10 @@ jobs:
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             version_tag="${GITHUB_REF_NAME#v}"
+            ppa_revision=""
           else
             version_tag="${{ github.event.inputs.upstream_version }}"
+            ppa_revision="${{ github.event.inputs.ppa_revision }}"
             if [[ -z "${version_tag}" ]]; then
               echo "Manual PPA publish requires workflow_dispatch input: upstream_version" >&2
               exit 1
@@ -125,7 +131,7 @@ jobs:
           export DEB_SIGN_KEYID="${{ secrets.PPA_GPG_FINGERPRINT }}"
 
           for ubuntu_series in ${series_list}; do
-            ./scripts/build-ppa-source.sh "${ubuntu_series}" "${version_tag}"
+            ./scripts/build-ppa-source.sh "${ubuntu_series}" "${version_tag}" "${ppa_revision}"
           done
 
       - name: Upload to Launchpad PPA
