@@ -7,19 +7,23 @@ on:
   workflow_dispatch:
     inputs:
       ubuntu_series:
-        description: "Ubuntu series (e.g. noble, jammy)"
+        description: "Ubuntu series list: all, or comma/space separated values (e.g. jammy,noble,resolute)"
         required: false
-        default: "noble"
+        default: "all"
+      upstream_version:
+        description: "Upstream version to publish manually (e.g. 0.0.2). Tags use the tag name automatically."
+        required: false
+        default: ""
 
 permissions:
-  contents: write # 修复问题 2：修改为 write，允许 CI 将更新后的 changelog 自动推回仓库
+  contents: read
 
 jobs:
   publish:
     name: Build and Upload PPA Source Package
     runs-on: ubuntu-latest
     env:
-      UBUNTU_SERIES: ${{ github.event.inputs.ubuntu_series || 'noble' }}
+      DEFAULT_UBUNTU_SERIES: "jammy noble resolute"
       LAUNCHPAD_USER: ${{ secrets.LAUNCHPAD_USER }}
       PPA_NAME: ${{ secrets.PPA_NAME }}
     steps:
@@ -99,33 +103,42 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x scripts/build-ppa-source.sh scripts/upload-ppa.sh debian/rules
-          version_tag="${GITHUB_REF_NAME#v}"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version_tag="${GITHUB_REF_NAME#v}"
+          else
+            version_tag="${{ github.event.inputs.upstream_version }}"
+            if [[ -z "${version_tag}" ]]; then
+              echo "Manual PPA publish requires workflow_dispatch input: upstream_version" >&2
+              exit 1
+            fi
+          fi
+
+          requested_series="${{ github.event.inputs.ubuntu_series || 'all' }}"
+          if [[ -z "${requested_series}" || "${requested_series}" == "all" ]]; then
+            series_list="${DEFAULT_UBUNTU_SERIES}"
+          else
+            series_list="$(printf '%s' "${requested_series}" | tr ',' ' ')"
+          fi
 
           # 针对本地脚本调用 dpkg-buildpackage 时，强行注入环境变量密码
           export DEB_SIGN_KEYID="${{ secrets.PPA_GPG_FINGERPRINT }}"
 
-          ./scripts/build-ppa-source.sh "${UBUNTU_SERIES}" "${version_tag}"
-
-      # 解决问题 2：自动将打包脚本修改后的最新 changelog 文件提交并推回 GitHub 仓库中留痕
-      - name: Commit and Push Updated Changelog
-        if: startsWith(github.ref, 'refs/tags/v') # 仅在正式打 tag 触发时才同步回代码库
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@://github.com"
-
-          # 检查 changelog 是否真的发生了变动
-          if ! git diff --exit-code debian/changelog; then
-            git add debian/changelog
-            git commit -m "chore: auto-update changelog for release ${GITHUB_REF_NAME}"
-            
-            # 强制推送更新到当前 tag 所属的分支（通常是 main）
-            git push origin HEAD:master
-          fi
+          for ubuntu_series in ${series_list}; do
+            ./scripts/build-ppa-source.sh "${ubuntu_series}" "${version_tag}"
+          done
 
       - name: Upload to Launchpad PPA
         shell: bash
         run: |
           set -euo pipefail
-          ./scripts/upload-ppa.sh "${LAUNCHPAD_USER}" "${PPA_NAME}"
+          shopt -s nullglob
+          changes_files=(../*_source.changes)
+          if (( ${#changes_files[@]} == 0 )); then
+            echo "No .changes file found. Build source package first." >&2
+            exit 1
+          fi
+
+          for changes_file in "${changes_files[@]}"; do
+            ./scripts/upload-ppa.sh "${LAUNCHPAD_USER}" "${PPA_NAME}" "${changes_file}"
+          done

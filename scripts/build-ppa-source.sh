@@ -19,7 +19,7 @@ if [[ -n "${UPSTREAM_VERSION}" ]]; then
   export DEBFULLNAME="${DEBFULLNAME:-allcloud.top}"
   export DEBEMAIL="${DEBEMAIL:-admin@allcloud.top}"
   DEBIAN_VERSION="${UPSTREAM_VERSION}ppa${MODIFY_VERSION}~${SERIES}"
-  dch --distribution "${SERIES}" --newversion "${DEBIAN_VERSION}" "Automated PPA source build for ${SERIES}."
+  dch --force-bad-version --distribution "${SERIES}" --newversion "${DEBIAN_VERSION}" "Automated PPA source build for ${SERIES}."
 else
   DEBIAN_VERSION="${CURRENT_VERSION}"
   UPSTREAM_VERSION="${CURRENT_UPSTREAM}"
