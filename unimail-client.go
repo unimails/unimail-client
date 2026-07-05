@@ -327,10 +327,18 @@ func packageManagerInstallMethodFromPath(exe string) string {
 	if runtime.GOOS == "windows" && strings.Contains(exePath, "/microsoft/winget/") {
 		return "winget"
 	}
-	if strings.Contains(exePath, "/cellar/") || strings.Contains(exePath, "/homebrew/bin/") || strings.Contains(exePath, "/.linuxbrew/bin/") {
+	if isHomebrewPath(exePath) {
 		return "brew"
 	}
 	return ""
+}
+
+func isHomebrewPath(exePath string) bool {
+	return strings.Contains(exePath, "/usr/local/cellar/") ||
+		strings.Contains(exePath, "/homebrew/cellar/") ||
+		strings.Contains(exePath, "/.linuxbrew/cellar/") ||
+		strings.Contains(exePath, "/homebrew/bin/") ||
+		strings.Contains(exePath, "/.linuxbrew/bin/")
 }
 
 func fetchLatestReleaseTag(repo string) (string, error) {
