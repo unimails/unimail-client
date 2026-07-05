@@ -175,7 +175,7 @@ unimail-client update
 unimail-client upgrade
 ```
 
-Auto update is only available for direct Release downloads or locally built binaries. Package-manager installations, such as APT/PPA or Winget builds, disable this command and should be upgraded through the same package manager.
+Auto update is only available for direct Release downloads or locally built binaries. Package-manager installations, such as APT/PPA, Winget, or Homebrew builds, disable this command and should be upgraded through the same package manager.
 
 ## Examples
 

@@ -175,7 +175,7 @@ unimail-client update
 unimail-client upgrade
 ```
 
-自动更新仅适用于直接从 Release 下载或本地构建的二进制文件。通过 APT/PPA、Winget 等包管理器安装的版本会禁用该命令，请使用对应的包管理器进行升级。
+自动更新仅适用于直接从 Release 下载或本地构建的二进制文件。通过 APT/PPA、Winget、Homebrew 等包管理器安装的版本会禁用该命令，请使用对应的包管理器进行升级。
 
 ## 示例
 

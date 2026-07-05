@@ -222,7 +222,7 @@ Options:
 Commands:
   version           print current version
   update/upgrade    check latest release of %s and install latest if outdated
-                    disabled for package-manager installations such as apt/winget
+                    disabled for package-manager installations such as apt/winget/brew
 
 Examples:
   unimail-client -k xxx -f "Sender" -r a@x.com -r b@x.com -s "Hello" -t "Plain"
@@ -296,7 +296,7 @@ func autoUpdateBlockedInstallMethod() string {
 
 func isPackageManagedInstall(method string) bool {
 	switch method {
-	case "apt", "deb", "debian", "winget", "package", "package-manager", "package_manager":
+	case "apt", "deb", "debian", "winget", "brew", "homebrew", "package", "package-manager", "package_manager":
 		return true
 	default:
 		return false
@@ -304,16 +304,31 @@ func isPackageManagedInstall(method string) bool {
 }
 
 func detectedPackageManagerInstall() string {
-	if runtime.GOOS != "windows" {
-		return ""
-	}
 	exe, err := os.Executable()
 	if err != nil {
 		return ""
 	}
+
+	paths := []string{exe}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil && resolved != exe {
+		paths = append(paths, resolved)
+	}
+
+	for _, path := range paths {
+		if method := packageManagerInstallMethodFromPath(path); method != "" {
+			return method
+		}
+	}
+	return ""
+}
+
+func packageManagerInstallMethodFromPath(exe string) string {
 	exePath := strings.ToLower(filepath.ToSlash(filepath.Clean(exe)))
-	if strings.Contains(exePath, "/microsoft/winget/") {
+	if runtime.GOOS == "windows" && strings.Contains(exePath, "/microsoft/winget/") {
 		return "winget"
+	}
+	if strings.Contains(exePath, "/cellar/") || strings.Contains(exePath, "/homebrew/bin/") || strings.Contains(exePath, "/.linuxbrew/bin/") {
+		return "brew"
 	}
 	return ""
 }
