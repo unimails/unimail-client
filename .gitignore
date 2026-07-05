@@ -6,5 +6,7 @@
 *.bak
 *.ext
 *.exe
+unimail-client
+unimail-client_test.go
 vendor/
 debian/files
