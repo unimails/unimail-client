@@ -32,4 +32,7 @@ func TestPackageManagerInstallMethodFromPathIgnoresDirectPath(t *testing.T) {
 	if got := packageManagerInstallMethodFromPath("/tmp/cellar/unimail-client"); got != "" {
 		t.Fatalf("packageManagerInstallMethodFromPath() = %q, want empty", got)
 	}
+	if got := packageManagerInstallMethodFromPath("/tmp/Cellar/unimail-client"); got != "" {
+		t.Fatalf("packageManagerInstallMethodFromPath() = %q, want empty", got)
+	}
 }
