@@ -1,9 +1,11 @@
 name: publish-ppa
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows:
+      - build
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       ubuntu_series:
@@ -26,15 +28,20 @@ jobs:
   publish:
     name: Build and Upload PPA Source Package
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     env:
       DEFAULT_UBUNTU_SERIES: "jammy noble resolute"
       LAUNCHPAD_USER: ${{ secrets.LAUNCHPAD_USER }}
       PPA_NAME: ${{ secrets.PPA_NAME }}
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.upstream_version || github.event.workflow_run.head_branch }}
+      REQUESTED_UBUNTU_SERIES: ${{ github.event_name == 'workflow_dispatch' && inputs.ubuntu_series || 'all' }}
+      PPA_REVISION_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.ppa_revision || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref }}
 
       - name: Setup Go Environment
         uses: actions/setup-go@v5
@@ -50,6 +57,7 @@ jobs:
           [ -n "${{ secrets.PPA_GPG_PASSPHRASE }}" ] || { echo "Missing secret: PPA_GPG_PASSPHRASE"; exit 1; }
           [ -n "${LAUNCHPAD_USER}" ] || { echo "Missing secret: LAUNCHPAD_USER"; exit 1; }
           [ -n "${PPA_NAME}" ] || { echo "Missing secret: PPA_NAME"; exit 1; }
+          [ -n "${RELEASE_TAG}" ] || { echo "Failed to resolve release tag from build workflow run"; exit 1; }
 
       - name: Install packaging dependencies
         run: |
@@ -108,19 +116,19 @@ jobs:
           set -euo pipefail
           chmod +x scripts/build-ppa-source.sh scripts/upload-ppa.sh debian/rules
 
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            version_tag="${GITHUB_REF_NAME#v}"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            version_tag="${RELEASE_TAG#v}"
             ppa_revision=""
           else
-            version_tag="${{ github.event.inputs.upstream_version }}"
-            ppa_revision="${{ github.event.inputs.ppa_revision }}"
+            version_tag="${RELEASE_TAG#v}"
+            ppa_revision="${PPA_REVISION_INPUT}"
             if [[ -z "${version_tag}" ]]; then
               echo "Manual PPA publish requires workflow_dispatch input: upstream_version" >&2
               exit 1
             fi
           fi
 
-          requested_series="${{ github.event.inputs.ubuntu_series || 'all' }}"
+          requested_series="${REQUESTED_UBUNTU_SERIES}"
           if [[ -z "${requested_series}" || "${requested_series}" == "all" ]]; then
             series_list="${DEFAULT_UBUNTU_SERIES}"
           else

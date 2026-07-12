@@ -1,9 +1,11 @@
 name: homebrew-update
 
 on:
-  release:
+  workflow_run:
+    workflows:
+      - build
     types:
-      - published
+      - completed
   workflow_dispatch:
     inputs:
       tag_name:
@@ -17,10 +19,11 @@ jobs:
   update-formula:
     name: Update Homebrew formula
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     env:
       TAP_REPO: unimails/homebrew-accloud-tool
       FORMULA_PATH: Formula/unimail-client.rb
-      RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.event.workflow_run.head_branch }}
       SOURCE_REPO: ${{ github.repository }}
       HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
       GH_TOKEN: ${{ github.token }}
@@ -30,6 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           [ -n "${HOMEBREW_TAP_TOKEN}" ] || { echo "Missing secret: HOMEBREW_TAP_TOKEN"; exit 1; }
+          [ -n "${RELEASE_TAG}" ] || { echo "Failed to resolve release tag from build workflow run"; exit 1; }
 
       - name: Download release checksums
         shell: bash

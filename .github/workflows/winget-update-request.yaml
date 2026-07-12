@@ -1,9 +1,11 @@
 name: winget-update-request
 
 on:
-  release:
+  workflow_run:
+    workflows:
+      - build
     types:
-      - published
+      - completed
   workflow_dispatch:
     inputs:
       tag_name:
@@ -17,11 +19,12 @@ jobs:
   create-update-request:
     name: Create winget-pkgs update request
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     env:
       PACKAGE_IDENTIFIER: ACCloud.UnimailClient
       WINGET_REPO: microsoft/winget-pkgs
-      RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
-      RELEASE_URL: ${{ github.event_name == 'release' && github.event.release.html_url || format('{0}/releases/tag/{1}', github.event.repository.html_url, inputs.tag_name) }}
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.event.workflow_run.head_branch }}
+      RELEASE_URL: ${{ format('{0}/releases/tag/{1}', github.event.repository.html_url, github.event_name == 'workflow_dispatch' && inputs.tag_name || github.event.workflow_run.head_branch) }}
       GH_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
     steps:
       - name: Validate token
@@ -29,6 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           [ -n "${GH_TOKEN}" ] || { echo "Missing secret: WINGET_GITHUB_TOKEN"; exit 1; }
+          [ -n "${RELEASE_TAG}" ] || { echo "Failed to resolve release tag from build workflow run"; exit 1; }
 
       - name: Create update request issue
         shell: bash
