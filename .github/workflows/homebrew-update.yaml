@@ -1,0 +1,134 @@
+name: homebrew-update
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to publish to Homebrew, for example v0.0.2"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  update-formula:
+    name: Update Homebrew formula
+    runs-on: ubuntu-latest
+    env:
+      TAP_REPO: unimails/homebrew-accloud-tool
+      FORMULA_PATH: Formula/unimail-client.rb
+      RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
+      SOURCE_REPO: ${{ github.repository }}
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate tap token
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${HOMEBREW_TAP_TOKEN}" ] || { echo "Missing secret: HOMEBREW_TAP_TOKEN"; exit 1; }
+
+      - name: Download release checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checksums
+          gh release download "${RELEASE_TAG}" \
+            --repo "${SOURCE_REPO}" \
+            --pattern 'unimail-client_darwin_*.tar.gz.sha256' \
+            --dir checksums \
+            --clobber
+
+          test -s checksums/unimail-client_darwin_amd64.tar.gz.sha256
+          test -s checksums/unimail-client_darwin_arm64.tar.gz.sha256
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TAP_REPO }}
+          token: ${{ env.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula and documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${RELEASE_TAG#v}"
+          amd64_sha256="$(awk '{print $1}' checksums/unimail-client_darwin_amd64.tar.gz.sha256)"
+          arm64_sha256="$(awk '{print $1}' checksums/unimail-client_darwin_arm64.tar.gz.sha256)"
+
+          cd homebrew-tap
+          mkdir -p "$(dirname "${FORMULA_PATH}")"
+          current_version="$(sed -nE 's/^[[:space:]]*version "([^"]+)".*/\1/p' "${FORMULA_PATH}" | head -n 1 || true)"
+          if [ -z "${current_version}" ]; then
+            current_version="${version}"
+          fi
+
+          cat > "${FORMULA_PATH}" <<EOF
+          class UnimailClient < Formula
+            desc "Open-source UniMail client"
+            homepage "https://github.com/unimails/unimail-client"
+            version "${version}"
+            license "BSD-3-Clause"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/unimails/unimail-client/releases/download/${RELEASE_TAG}/unimail-client_darwin_arm64.tar.gz"
+                sha256 "${arm64_sha256}"
+              else
+                url "https://github.com/unimails/unimail-client/releases/download/${RELEASE_TAG}/unimail-client_darwin_amd64.tar.gz"
+                sha256 "${amd64_sha256}"
+              end
+            end
+
+            def install
+              bin.install "unimail-client"
+            end
+
+            test do
+              assert_path_exists bin/"unimail-client"
+            end
+          end
+          EOF
+
+          export CURRENT_VERSION="${current_version}"
+          export NEW_VERSION="${version}"
+          for readme_file in README.md README_zh.md; do
+            if [ -f "${readme_file}" ]; then
+              perl -0pi -e 's/\Q$ENV{CURRENT_VERSION}\E/$ENV{NEW_VERSION}/g' "${readme_file}"
+            fi
+          done
+
+      - name: Commit, tag, and push changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd homebrew-tap
+          git fetch --tags origin
+
+          git add "${FORMULA_PATH}"
+          for readme_file in README.md README_zh.md; do
+            if [ -f "${readme_file}" ]; then
+              git add "${readme_file}"
+            fi
+          done
+
+          if git diff --cached --quiet; then
+            echo "Formula and README files are already up to date for ${RELEASE_TAG}."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Update unimail-client to ${RELEASE_TAG}"
+            git push
+          fi
+
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            echo "Tag ${RELEASE_TAG} already exists in Homebrew tap."
+          else
+            git tag "${RELEASE_TAG}"
+            git push origin "${RELEASE_TAG}"
+          fi
