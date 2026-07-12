@@ -1,5 +1,7 @@
 # UNIMAIL-CLIENT
 
+![Static Badge](https://img.shields.io/badge/owner-allcloud-blue) ![Static Badge](https://img.shields.io/badge/owner-unimails-blue) ![Static Badge](https://img.shields.io/badge/language-go-green) ![Static Badge](https://img.shields.io/badge/version-0.0.3-green) ![Static Badge](https://img.shields.io/badge/type-command-blue)
+
 一个用基于unimail项目的邮件接口发送邮件的命令行工具, 快速上手使用。
 
 [EnglishDocs](README.md)

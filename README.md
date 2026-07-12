@@ -1,5 +1,7 @@
 # UNIMAIL-CLIENT
 
+![Static Badge](https://img.shields.io/badge/owner-allcloud-blue) ![Static Badge](https://img.shields.io/badge/owner-unimails-blue) ![Static Badge](https://img.shields.io/badge/language-go-green) ![Static Badge](https://img.shields.io/badge/version-0.0.3-green) ![Static Badge](https://img.shields.io/badge/type-command-blue)
+
 A command-line tool for sending email through [unimail-go-sdk](https://github.com/unimails/unimail-go-sdk).
 
 [Chinese Docs](README_zh.md)

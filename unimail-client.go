@@ -16,7 +16,7 @@ import (
 	unimail "github.com/unimails/unimail-go-sdk"
 )
 
-var VERSION = "0.0.2"
+var VERSION = "0.0.3"
 var INSTALL_METHOD = "direct"
 
 const defaultRepo = "unimails/unimail-client"
