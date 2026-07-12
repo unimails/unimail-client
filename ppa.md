@@ -6,11 +6,10 @@
 
 默认发布目标：
 
-- Ubuntu 22.04: `jammy`
 - Ubuntu 24.04: `noble`
 - Ubuntu 26.04: `resolute`
 
-在 GitHub Actions 里填写 `all` 时，会按 `jammy noble resolute` 依次构建和上传。
+在 GitHub Actions 里填写 `all` 时，会按 `noble resolute` 依次构建和上传。
 
 ## 发布脚本
 
@@ -41,18 +40,18 @@ go mod vendor
 export DEB_SIGN_KEYID="<gpg_key_fingerprint>"
 ```
 
-构建并上传单个 Ubuntu series，例如发布 `0.0.2` 到 Ubuntu 22.04：
+构建并上传单个 Ubuntu series，例如发布 `0.0.2` 到 Ubuntu 24.04：
 
 ```bash
-./scripts/build-ppa-source.sh jammy 0.0.2
-./scripts/upload-ppa.sh <launchpad_user> <ppa_name> ../unimail-client_0.0.2ppa~jammy_source.changes
+./scripts/build-ppa-source.sh noble 0.0.2
+./scripts/upload-ppa.sh <launchpad_user> <ppa_name> ../unimail-client_0.0.2ppa~noble_source.changes
 ```
 
 构建并上传多个 Ubuntu series：
 
 ```bash
 version="0.0.2"
-for series in jammy noble resolute; do
+for series in noble resolute; do
 	./scripts/build-ppa-source.sh "${series}" "${version}"
 	./scripts/upload-ppa.sh <launchpad_user> <ppa_name> "../unimail-client_${version}ppa~${series}_source.changes"
 done
@@ -68,7 +67,7 @@ done
 如果只是本地测试构建，不需要签名和上传，可以使用：
 
 ```bash
-UNSIGNED=1 ./scripts/build-ppa-source.sh jammy 0.0.2
+UNSIGNED=1 ./scripts/build-ppa-source.sh noble 0.0.2
 ```
 
 本地构建会修改 `debian/changelog`。如果只是手动补发 PPA，不准备把这次 changelog 写回仓库，发布完成后可以还原它：
@@ -96,7 +95,7 @@ git tag v0.0.3
 git push origin v0.0.3
 ```
 
-tag 工作流会从标签名解析版本号，并默认发布到 `jammy`、`noble`、`resolute`。工作流会在 CI 工作区内更新 changelog 用于构建源码包，但不会再把 changelog commit 回仓库。
+tag 工作流会从标签名解析版本号，并默认发布到 `noble`、`resolute`。工作流会在 CI 工作区内更新 changelog 用于构建源码包，但不会再把 changelog commit 回仓库。
 
 ## GitHub Actions 手动补发
 
@@ -107,10 +106,10 @@ tag 工作流会从标签名解析版本号，并默认发布到 `jammy`、`nobl
 - `upstream_version`: `0.0.2`
 - `ubuntu_series`: `all`
 
-只补发 Ubuntu 22.04 和 Ubuntu 26.04：
+只补发 Ubuntu 24.04 和 Ubuntu 26.04：
 
 - `upstream_version`: `0.0.2`
-- `ubuntu_series`: `jammy,resolute`
+- `ubuntu_series`: `noble,resolute`
 - `ppa_revision`: 留空
 
 如果某个 series 已经部分上传过，重试时报 `Upload permissions error`，只重试失败的 series，并填写新的 `ppa_revision`：
@@ -122,5 +121,5 @@ tag 工作流会从标签名解析版本号，并默认发布到 `jammy`、`nobl
 也可以用空格分隔：
 
 ```text
-jammy resolute
+noble resolute
 ```

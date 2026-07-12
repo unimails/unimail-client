@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       ubuntu_series:
-        description: "Ubuntu series list: all, or comma/space separated values (e.g. jammy,noble,resolute)"
+        description: "Ubuntu series list: all, or comma/space separated values (e.g. noble,resolute)"
         required: false
         default: "all"
       upstream_version:
@@ -17,7 +17,7 @@ on:
         required: false
         default: ""
       ppa_revision:
-        description: "Optional PPA retry revision (e.g. 1 builds 0.0.2ppa1~jammy). Leave empty for normal releases."
+        description: "Optional PPA retry revision (e.g. 1 builds 0.0.2ppa1~noble). Leave empty for normal releases."
         required: false
         default: ""
 
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     env:
-      DEFAULT_UBUNTU_SERIES: "jammy noble resolute"
+      DEFAULT_UBUNTU_SERIES: "noble resolute"
       LAUNCHPAD_USER: ${{ secrets.LAUNCHPAD_USER }}
       PPA_NAME: ${{ secrets.PPA_NAME }}
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.upstream_version || github.event.workflow_run.head_branch }}
