@@ -16,67 +16,13 @@ permissions:
   contents: read
 
 jobs:
-  create-update-request:
-    name: Create winget-pkgs update request
-    runs-on: ubuntu-latest
+  pull-request:
+    runs-on: windows-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    env:
-      PACKAGE_IDENTIFIER: ACCloud.UnimailClient
-      WINGET_REPO: microsoft/winget-pkgs
-      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.event.workflow_run.head_branch }}
-      RELEASE_URL: ${{ format('{0}/releases/tag/{1}', github.event.repository.html_url, github.event_name == 'workflow_dispatch' && inputs.tag_name || github.event.workflow_run.head_branch) }}
-      GH_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
     steps:
-      - name: Validate token
-        shell: bash
-        run: |
-          set -euo pipefail
-          [ -n "${GH_TOKEN}" ] || { echo "Missing secret: WINGET_GITHUB_TOKEN"; exit 1; }
-          [ -n "${RELEASE_TAG}" ] || { echo "Failed to resolve release tag from build workflow run"; exit 1; }
-
-      - name: Create update request issue
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          version="${RELEASE_TAG#v}"
-          title="[Update Request]: ${PACKAGE_IDENTIFIER} version ${version}"
-          existing_issue="$(gh issue list \
-            --repo "${WINGET_REPO}" \
-            --search "${title} in:title is:issue" \
-            --state all \
-            --json number,url \
-            --jq '.[0].url // empty')"
-
-          if [ -n "${existing_issue}" ]; then
-            echo "Update request already exists: ${existing_issue}"
-            exit 0
-          fi
-
-          body_file="$(mktemp)"
-          cat > "${body_file}" <<EOF
-          ### What type of update are you requesting?
-
-          A new version of an existing package
-
-          ### Current Package Identifier
-
-          ${PACKAGE_IDENTIFIER}
-
-          ### Package Version
-
-          ${version}
-
-          ### Please describe the changes you would like to see
-
-          A new upstream release is available.
-
-          Release: ${RELEASE_URL}
-          EOF
-
-          issue_url="$(gh issue create \
-            --repo "${WINGET_REPO}" \
-            --title "${title}" \
-            --body-file "${body_file}")"
-
-          echo "Created update request: ${issue_url}"
+      - uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: ACCloud.UnimailClient
+          release-tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.event.workflow_run.head_branch }}
+          installers-regex: '^unimail-client_windows_(386|amd64|arm64)\.zip$'
+          token: ${{ secrets.WINGET_TOKEN }}
